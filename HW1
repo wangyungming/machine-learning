@@ -1,0 +1,266 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import copy as cp
+import random
+import math
+
+#讀取資料
+data=pd.read_csv("data.csv")
+crx=pd.read_csv("crx.csv")
+
+#假設w矩陣
+w=np.zeros(len(data.columns[2:]))
+print(w)
+
+#將將label轉換成+1/-1
+label={
+    'M':1,
+    'B':-1
+}
+data['label'] = data['Diagnosis'].map(label)
+
+a=data[data.columns[2:-1]]
+aa=np.array(a)      #將feature轉換成矩陣
+b=data["label"]
+bb=np.array(b)      #將label轉換成矩陣
+#print(bb)
+
+#1 linear classifier:J=Wx
+
+#2
+w_1=[]
+w=aa[0]*bb[0]      #利用更新法則假設w值為第一個feature
+B=0
+BB=[]
+for i in range(len(data)):
+  ww=w*aa[i]+B
+  if ww.sum()*bb[i]>0:
+    print(w)
+    print(B)
+    w_cp=cp.deepcopy(w)
+    BB.append(B)
+    w_1.append(w_cp)
+    continue
+  else:x
+    w+=aa[i]*bb[i]      #w更新方式為w+label*feature
+    B+=-bb[i]        #B更新方式為B+label
+
+
+Linear classifier:J=Wx
+重複驗證
+
+w_1=[]
+w=aa[0]*bb[0]
+error=1
+while error!=0:
+   error=0
+   for i in range(len(data)):
+    ww=w*aa[i]
+    if ww.sum()*bb[i]>0:
+      print(w)
+      w_cp=cp.deepcopy(w)
+      w_1.append(w_cp)
+      continue
+    else:
+      w+=aa[i]*bb[i]
+      error+=1
+
+#2 Least-square solution:
+ŵ = (X^TX)^-1*XT*Y
+
+#3
+a_T=aa.T            #xT
+a_1=np.dot(aa.T,aa)      #xT*x
+a_inv=np.linalg.inv(a_1)    #(xT*x)-1
+aa_1=np.dot(a_inv,a_T)     #(xT*x)-1*xT
+w_ls=np.dot(aa_1,bb)      #(xT*x)-1*xT*Y
+w_ls
+
+p = np.dot(w_ls, aa[i])
+p
+
+correct = 0
+for i in range(100):
+  #print("Anse", bb[i])
+  #print("Pred", )
+  p = np.dot(w_ls, aa[i])
+  if bb[i] == -1 and p < 0:
+    correct = correct + 1
+  elif bb[i] == 1 and p > 0:
+    correct = correct + 1 
+print(correct)
+
+#3 vote perception
+
+w_1
+
+#4
+V=[]      #出現過的value
+v=0
+C=[]      #value的次數
+c=1
+BBB=[]     #出現過的B
+for n in range(len(w_1)):
+  m=n-1
+  if m<0:
+   V.append(w_1[0])
+   BBB.append(BB[0])
+  elif (w_1[m] == w_1[n]).all() and m>=0:
+   c+=1
+  else:
+   C.append(c)
+   c=1
+   vv=cp.deepcopy(w_1[n])
+   V.append(vv)
+   BBB.append(BB[n])
+C.append(c)  
+#print(V)
+#print(C)
+#print(BBB)  
+
+vote_neg=0
+vote_pos=0
+a1=random.randint(0,len(aa))
+for nn in range(len(V)):      #將隨機feature帶入計算與實際label比較
+  v1=V[nn]*aa[a1]+BBB[nn]
+  if sum(v1)<0:
+    vote_neg+=1*C[nn]
+  else:
+    vote_pos+=1*C[nn]
+print("predict positive:",vote_pos)
+print("predict negative:",vote_neg)
+print("true label:",bb[a1])
+
+#4 
+the linear classifier with the minimum ||w||^2 property and verify whether the margin of this version is larger than that of the conventional linear classifier or not
+
+#5
+NN=[]
+for l in range(len(V)):      #尋找data中離每個value的最小距離
+  N=[]
+  for ll in range(len(aa)):
+    vw=math.sqrt(sum(V[l]*V[l]))
+    n=V[l]/vw*aa[ll]+BBB[l]
+    if sum(n)*bb[ll]>0:
+      N.append(sum(n)*bb[ll])
+    else:
+      pass
+  NN.append(min(N))
+NN
+
+print(NN.index(max(NN)))      #找出最大的margin
+NN[NN.index(max(NN))]
+
+NNN=[]
+for l in range(len(V)):
+  NNN.append(sum(V[l]*V[l]))
+print(NNN.index(max(NNN)))  
+
+#5 
+add the slack variable term in the linear classifier and find the most effective weighting value C.
+
+SS=[]
+C=1
+for l in range(len(V)):
+  S=[]
+  nn=0
+  for ll in range(len(aa)):
+    vw=math.sqrt(sum(V[l]*V[l]))
+    n=V[l]/vw*aa[ll]+BBB[l]
+    if sum(n)*bb[ll]>0:
+      pass
+    else:
+      nn+=-sum(n)      #將判斷錯誤的data與函數的距離加入w將判斷錯誤的data與函數的距離加入w
+  SS.append(sum(V[l]*V[l])+nn*C)
+SS
+
+print(SS.index(min(SS)))
+SS[SS.index(min(SS))]
+
+#6
+SVM package
+
+Aa=data[data.columns[3:5]]
+Aaa=np.array(Aa)
+b=data["label"]
+bb=np.array(b)
+
+from sklearn.model_selection import train_test_split
+X_train, X_test, y_train, y_test = train_test_split(Aaa, bb, test_size=0.3, random_state=0)
+
+from sklearn.preprocessing import StandardScaler
+
+sc = StandardScaler()
+sc.fit(X_train)
+X_train_std=sc.transform(X_train)
+X_test_std=sc.transform(X_test)
+
+from sklearn import svm
+
+clf = svm.SVC()
+clf.fit(X_train_std,y_train)
+
+ypred = clf.predict(X_test_std)
+
+y_true = y_test
+
+error = 0
+for i , v in enumerate(clf.predict(X_test_std)):
+  if v != y_test[i]:
+    error+=1
+print(error)
+
+from matplotlib.colors import ListedColormap
+
+def plot_decision_regions(X, y, classifier, test_idx=None, resolution=0.02):
+
+    # setup marker generator and color map
+    markers = ('s', 'x', 'o', '^', 'v')
+    colors = ('red', 'blue', 'lightgreen', 'gray', 'cyan')
+    cmap = ListedColormap(colors[:len(np.unique(y))])
+
+    # plot the decision surface
+    x1_min, x1_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    x2_min, x2_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx1, xx2 = np.meshgrid(np.arange(x1_min, x1_max, resolution),
+                           np.arange(x2_min, x2_max, resolution))
+    Z = classifier.predict(np.array([xx1.ravel(), xx2.ravel()]).T)
+    Z = Z.reshape(xx1.shape)
+    plt.contourf(xx1, xx2, Z, alpha=0.4, cmap=cmap)
+    plt.xlim(xx1.min(), xx1.max())
+    plt.ylim(xx2.min(), xx2.max())
+
+    for idx, cl in enumerate(np.unique(y)):
+        plt.scatter(x=X[y == cl, 0], 
+                    y=X[y == cl, 1],
+                    alpha=0.6, 
+                    c=cmap(idx),
+                    edgecolor='black',
+                    marker=markers[idx], 
+                    label=cl)
+
+    # highlight test samples
+    if test_idx:
+        # plot all samples
+        if not versiontuple(np.__version__) >= versiontuple('1.9.0'):
+            X_test, y_test = X[list(test_idx), :], y[list(test_idx)]
+            warnings.warn('Please update to NumPy 1.9.0 or newer')
+        else:
+            X_test, y_test = X[test_idx, :], y[test_idx]
+
+        plt.scatter(X_test[:, 0],
+                    X_test[:, 1],
+                    c='',
+                    alpha=1.0,
+                    edgecolor='black',
+                    linewidths=1,
+                    marker='o',
+                    s=55, label='test set')
+
+plot_decision_regions(X_train_std, y_train, classifier=clf)
+plt.xlabel('x1')
+plt.ylabel('x2')
+plt.legend(loc='upper left')
+plt.tight_layout()
+plt.show()
