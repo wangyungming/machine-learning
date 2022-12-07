@@ -1,1 +1,538 @@
+import pandas as pd
+import numpy as np
+import math
+import copy
+import matplotlib.pyplot as plt
 
+# Naive Bayer classifier
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train_data = data_1.iloc[:int(len(data)*3/5),1:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),1:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,1:].reset_index(drop=True)
+print("train =",len(train_data), "\n", "test =",len(test), "\n", "val =",len(val))
+
+P_0 = data[data["is_claim"]==0]
+P_1 = data[data["is_claim"]==1]
+P0 = len(P_0)
+P1 = len(P_1)
+train = train_data.iloc[:, :-1]
+train_0 = train_data[train_data["is_claim"]==0].drop(columns = "is_claim")
+train_1 = train_data[train_data["is_claim"]==1].drop(columns = "is_claim")
+column = len(train.columns)-1
+
+data.feature_contain = {}
+train0 = {}
+train1 = {}
+
+for i in range(len(data.columns)):
+  feature = {}
+  for ii in range(len(data[data.columns[i]].value_counts())):
+    feature[data[data.columns[i]].unique()[ii]] = 0
+  data.feature_contain[data.columns[i]] = feature
+
+for i in range(len(train.columns)):
+  feature0 = copy.deepcopy(data.feature_contain[train.columns[i]])
+  for ii in range(len(train_0[train_0.columns[i]].value_counts())):
+    feature0[train_0[train_0.columns[i]].unique()[ii]] = train_0[train_0.columns[i]].value_counts()[train_0[train_0.columns[i]].unique()[ii]]
+  train0[train_0.columns[i]] = feature0
+
+
+for i in range(len(train.columns)):
+  feature1 = copy.deepcopy(data.feature_contain[train.columns[i]])
+  for ii in range(len(train_1[train_1.columns[i]].value_counts())):
+    feature1[train_1[train_1.columns[i]].unique()[ii]] = train_1[train_1.columns[i]].value_counts()[train_1[train_1.columns[i]].unique()[ii]]
+  train1[train_1.columns[i]] = feature1
+
+column = len(train.columns)
+test_data = test.iloc[:,:column]
+prediction = []
+for i in range(len(test_data)):
+  p0 = P0/len(data)
+  for ii in range(column):
+    p0 = p0*(train0[test_data.columns[ii]][test_data.iloc[i][ii]]/len(train0))
+  p1 = P1/len(data)
+  for ii in range(column):
+    p1 = p1*(train1[test_data.columns[ii]][test_data.iloc[i][ii]]/len(train1))
+  if p0>p1:
+    predict = 0
+  else:
+    predict = 1
+  prediction.append(predict)
+
+
+correct = 0
+wrong = 0
+for i in range(len(prediction)):
+  if prediction[i] == test["is_claim"][i]:
+    correct = correct + 1
+  else:
+    wrong = wrong + 1
+
+accuracy = correct/(correct+wrong)*100
+print("accuracy =",accuracy ,"%")
+
+# Random Forest classifier
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train = data_1.iloc[:int(len(data)*3/5),30:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),30:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,30:].reset_index(drop=True)
+print("train =",len(train), "\n", "test =",len(test), "\n", "val =",len(val))
+
+x = data.iloc[:, 30:len(data.columns)-1]
+y = data.iloc[:, len(data.columns)-1]
+x_0 = data[data["is_claim"] == 0].iloc[:, 30:len(data.columns)-1]
+x_1 = data[data["is_claim"] == 1].iloc[:, 30:len(data.columns)-1]
+
+def xy(data):
+    x = data.iloc[:, :len(data.columns)-1]  #feature
+    y = data.iloc[:, len(data.columns)-1]  #label
+    x_0 = data[data["is_claim"] == 0].iloc[:, :len(data.columns)-1]
+    x_1 = data[data["is_claim"] == 1].iloc[:, :len(data.columns)-1]
+    return x, y, x_0, x_1
+
+feature_num = len(x.columns)
+feature_content = {}   
+for i in range(feature_num):
+  feature = {}
+  for ii in range(len(x[x.columns[i]].value_counts())):
+    feature[x[x.columns[i]].unique()[ii]] = 0
+  feature_content[x.columns[i]] = feature
+
+feature_content_0 = {}
+feature_content_1 = {}
+for i in range(feature_num):
+  feature_0 = copy.deepcopy(feature_content[x.columns[i]]) 
+  feature_1 = copy.deepcopy(feature_content[x.columns[i]]) 
+  for ii in range(len(x_0[x_0.columns[i]].value_counts())):
+    feature_0[x_0[x_0.columns[i]].unique()[ii]] = x_0[x_0.columns[i]].value_counts()[x_0[x_0.columns[i]].unique()[ii]]
+  feature_content_0[x_0.columns[i]] = feature_0
+  for ii in range(len(x_1[x_1.columns[i]].value_counts())):
+    feature_1[x_1[x_1.columns[i]].unique()[ii]] = x_1[x_1.columns[i]].value_counts()[x_1[x_1.columns[i]].unique()[ii]]
+  feature_content_1[x_1.columns[i]] = feature_1
+
+def node_split( data):
+  x, y, x_0, x_1 = xy(data)
+  E = {}
+  for l in range(len(x.columns)):
+    e = 0
+    for ll in range(len(x[x.columns[l]].unique())):
+      p = feature_content_1[x.columns[l]][x[x.columns[l]].unique()[ll]]
+      n = feature_content_0[x.columns[l]][x[x.columns[l]].unique()[ll]]
+      if p == 0:
+        a = 0
+      else:
+        a = -(p/(p+n))*math.log((p/(p+n)), 2)
+      if n == 0:
+        b = 0
+      else:
+        b = -(n/(n+p))*math.log((n/(p+n)), 2)
+      I = a+b
+      e = e+I
+    E[x.columns[l]] = e
+    split_index = [i for i in E if E[i]==min(E.values())][0]
+    split_0 = data[data[[i for i in E if E[i]==min(E.values())][0]] == 0].drop(columns = split_index)
+    split_1 = data[data[[i for i in E if E[i]==min(E.values())][0]] == 1].drop(columns = split_index)
+    split_data = data.drop(columns = split_index)
+    return split_index, split_0, split_1, split_data
+
+forest = {}
+for i in range(30):
+  traindata = train.sample(frac=0.3,axis=0)
+  train_feature = traindata.sample(n=3,axis=1)
+  tree = {}
+  for ii in range(len(train.columns)):
+    tree[train.columns[ii]] = {}
+    tree[train.columns[ii]][0] = 0
+    tree[train.columns[ii]][1] = 0
+
+  #node1
+  split_index, split0, split1, split_data = node_split(train)
+  tree[split_index] = {}
+  if len(split0) != 0:
+    tree[split_index][0] = len(split0[split0["is_claim"] == 0]) / len(split_data)
+  else:
+    tree[split_index][0] = 0
+  if len(split1) != 0:
+    tree[split_index][1] = len(split1[split1["is_claim"] == 1]) / len(split_data)
+  else:
+    tree[split_index][1] = 0
+
+  #node2
+  split_index_0, split0_0, split1_0, split_data_0 = node_split(split0)
+  tree[split_index_0] = {}
+  if len(split0_0) != 0:
+    tree[split_index_0][0] = len(split0_0[split0_0["is_claim"] == 0]) / len(split_data_0)
+  else:
+    tree[split_index_0][0] = 0
+  if len(split1_0) != 0:
+    tree[split_index_0][1] = len(split1_0[split1_0["is_claim"] == 1]) / len(split_data_0)
+  else:
+    tree[split_index_0][1] = 0
+
+  #node3
+  split_index_1, split0_1, split1_1, split_data_1 = node_split(split1)
+  tree[split_index_1] = {}
+  if len(split0_1) != 0:
+    tree[split_index_1][0] = len(split0_1[split0_1["is_claim"] == 0]) / len(split_data_1)
+  else:
+    tree[split_index_1][0] = 0
+  if len(split1_1) != 0:
+    tree[split_index_1][1] = len(split1_1[split1_1["is_claim"] == 1]) / len(split_data_1)
+  else:
+    tree[split_index_1][1] = 0
+  forest[i] = tree
+  
+data["predict"] = 999
+predicted = []
+for iii in range(len(test)):
+  for i in range(30):
+      predict_tree = []
+      p = 0
+      for ii in range(len(forest[i])):
+        if test[test.columns[ii]][iii] == 0:
+          p = p - forest[i][test.columns[ii]][0]
+        elif test[test.columns[ii]][iii] == 1:
+          p = p + forest[i][test.columns[ii]][1]
+      if p < 0:
+        predict_tree.append(0)
+      else:
+        predict_tree.append(1)
+  if (max(predict_tree, key = predict_tree.count)) == 0:
+    predict = 0
+  elif (max(predict_tree, key = predict_tree.count)) == 1:
+    predict = 1
+  predicted.append(predict)
+
+correct = 0
+wrong = 0
+for i in range(len(predicted)):
+  if predicted[i] == test["is_claim"][i]:
+    correct = correct + 1
+  else:
+    wrong = wrong + 1
+
+accuracy = correct/(correct+wrong)*100
+print("accuracy =",accuracy ,"%")
+
+# Random Forest (scikit-learning)
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train = data_1.iloc[:int(len(data)*3/5),1:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),1:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,1:].reset_index(drop=True)
+print("train =",len(train), "\n", "test =",len(test), "\n", "val =",len(val))
+
+from sklearn.ensemble import RandomForestClassifier
+
+forest = RandomForestClassifier()
+
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+
+X_train = pd.get_dummies(X_train)
+
+forest.fit(X_train,y_train.values)
+
+X_test = test.iloc[:, 1:len(test.columns)-1]
+X_test = pd.get_dummies(X_test)
+
+predict = forest.predict(X_test)
+
+right = 0
+wrong = 0
+for i in range(len(predict)):
+  if y_train.values[i] == predict[i]:
+    right += 1
+  else:
+    wrong += 4
+accuracy = right/(right+wrong)
+accuracy
+
+# XGBoost
+https://ithelp.ithome.com.tw/articles/10273094?sc=iThomeR
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train = data_1.iloc[:int(len(data)*3/5),1:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),1:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,1:].reset_index(drop=True)
+print("train =",len(train), "\n", "test =",len(test), "\n", "val =",len(val))
+
+from xgboost import XGBClassifier
+xgboostModel = XGBClassifier(n_estimators=100, learning_rate= 0.3)
+
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+
+X_test = test.iloc[:, 1:len(test.columns)-1]
+y_test = test.iloc[:, len(test.columns)-1]
+X_test = pd.get_dummies(X_test)
+
+xgboostModel.fit(X_train, y_train)
+
+predicted = xgboostModel.predict(X_train)
+
+predicted
+
+xgboostModel.score(X_train,y_train)
+
+# Catboost
+https://www.projectpro.io/recipes/use-catboost-classifier-and-regressor-in-python
+
+pip install catboost
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train = data_1.iloc[:int(len(data)*3/5),1:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),1:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,1:].reset_index(drop=True)
+print("train =",len(train), "\n", "test =",len(test), "\n", "val =",len(val))
+
+import catboost as ctb
+from sklearn import metrics
+
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+
+X_test = test.iloc[:, 1:len(test.columns)-1]
+y_test = test.iloc[:, len(test.columns)-1]
+X_test = pd.get_dummies(X_test)
+
+model_CBC = ctb.CatBoostClassifier()
+model_CBC.fit(X_train, y_train)
+
+expected_y  = y_test
+predicted_y = model_CBC.predict(X_test)
+def accuracy(y, y1):
+  right = 0
+  wrong = 0
+  for i in range(len(y)):
+    if y[i] == y1[i]:
+      right += 1
+    elif y[i] != y1[i]:
+      wrong += 1
+  acc = right/(right+wrong)
+  return acc
+accuracy(expected_y,predicted_y)
+
+predicted_y
+
+# LightGBM
+https://ithelp.ithome.com.tw/articles/10274577
+
+data = pd.read_csv("train.csv")
+data
+
+data.iloc[:, 1].describe()
+data.iloc[:, 1] = data.iloc[:, 1]/max(data.iloc[:, 1])
+for i in range(len(data.iloc[:, 1])):
+  if data.iloc[:, 1][i] >= 0.5:
+    data.iloc[:, 1][i] = 1
+  elif data.iloc[:, 1][i] < 0.5:
+    data.iloc[:, 1][i] = 0 
+
+data = data.replace("No", 0)
+data = data.replace("Yes", 1)
+
+data_1 = data.iloc[np.random.permutation(data.index)].reset_index(drop=True)
+train = data_1.iloc[:int(len(data)*3/5),1:].reset_index(drop=True)
+test = data_1.iloc[int(len(data)*3/5):int(len(data)*4/5),1:].reset_index(drop=True)
+val = data_1.iloc[int(len(data)*4/5):,1:].reset_index(drop=True)
+print("train =",len(train), "\n", "test =",len(test), "\n", "val =",len(val))
+
+import lightgbm as lgb
+lgb = lgb.LGBMClassifier(is_unbalance=True)
+
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+
+X_test = test.iloc[:, 1:len(test.columns)-1]
+y_test = test.iloc[:, len(test.columns)-1]
+X_test = pd.get_dummies(X_test)
+
+lgb.fit(X_train,y_train)
+
+from sklearn.metrics import accuracy_score
+pred=lgb.predict(X_test)
+print("Accuracy:", accuracy_score(y_test, pred))
+
+pred
+
+# K-fold
+
+##Random_Forest(by scikit learn)
+
+from sklearn.ensemble import RandomForestClassifier
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+forest = RandomForestClassifier()
+
+###n = 3
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(forest, X_train, y_train, cv=3, scoring="accuracy")
+print(accuracy)
+
+###n = 5
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(forest, X_train, y_train, cv=5, scoring="accuracy")
+print(accuracy)
+
+###n = 10
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(forest, X_train, y_train, cv=10, scoring="accuracy")
+print(accuracy)
+
+##XGBoost
+
+from xgboost import XGBClassifier
+xgboostModel = XGBClassifier(n_estimators=100, learning_rate= 0.3)
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+
+###n = 3
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(xgboostModel, X_train, y_train, cv=3, scoring="accuracy")
+print(accuracy)
+
+###n = 5
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(xgboostModel, X_train, y_train, cv=5, scoring="accuracy")
+print(accuracy)
+
+###n = 10
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(xgboostModel, X_train, y_train, cv=10, scoring="accuracy")
+print(accuracy)
+
+##lightGBM
+
+import lightgbm as lgb
+lgb = lgb.LGBMClassifier(is_unbalance=True)
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+
+###n = 3
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(lgb, X_train, y_train, cv=3, scoring="accuracy")
+print(accuracy)
+
+###n = 5
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(lgb, X_train, y_train, cv=5, scoring="accuracy")
+print(accuracy)
+
+###n = 10
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(lgb, X_train, y_train, cv=10, scoring="accuracy")
+print(accuracy)
+
+##CatBoost
+
+import catboost as ctb
+X_train = train.iloc[:, 1:len(train.columns)-1]
+y_train = train.iloc[:, len(train.columns)-1]
+X_train = pd.get_dummies(X_train)
+model_CBC = ctb.CatBoostClassifier()
+
+###n = 3
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(model_CBC, X_train, y_train, cv=3, scoring="accuracy")
+print(accuracy)
+
+###n = 5
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(model_CBC, X_train, y_train, cv=5, scoring="accuracy")
+print(accuracy)
+
+###n = 10
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(model_CBC, X_train, y_train, cv=10, scoring="accuracy")
+print(accuracy)
